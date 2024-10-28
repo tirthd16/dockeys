@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocsKeys Shortcuts</title>
+    <style>
+        :root {
+            --primary-color: #1a73e8;
+            --border-color: #e0e0e0;
+            --hover-bg: #f5f5f5;
+        }
+
+        body {
+            width: 380px;
+            max-height: 600px;
+            margin: 0;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-size: 14px;
+            color: #333;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .mode-indicator {
+            margin-left: auto;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background-color: #e8f0fe;
+            color: var(--primary-color);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            color: #555;
+        }
+
+        .shortcuts-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 4px 12px;
+        }
+
+        .shortcut {
+            display: contents;
+        }
+
+        .shortcut:hover > * {
+            background-color: var(--hover-bg);
+        }
+
+        .key {
+            padding: 4px 8px;
+            border-radius: 4px;
+            background-color: #f5f5f5;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-weight: 500;
+            color: #444;
+            white-space: nowrap;
+        }
+
+        .description {
+            padding: 4px 0;
+            color: #666;
+        }
+
+        .tip {
+            margin-top: 16px;
+            padding: 8px;
+            background-color: #fff8e1;
+            border-left: 4px solid #ffd54f;
+            border-radius: 4px;
+        }
+
+        .tip-title {
+            font-weight: 600;
+            color: #755800;
+            margin-bottom: 4px;
+        }
+
+        .tip-content {
+            color: #5f4700;
+            font-size: 13px;
+        }
+
+        footer {
+            margin-top: 20px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>DocsKeys</h1>
+        <a target="_blank" href="https://www.github.com/tirthd16/dockeys" class="mode-indicator">Github</a>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">Navigation</h2>
+        <div class="shortcuts-grid">
+            <div class="shortcut">
+                <div class="key">h j k l</div>
+                <div class="description">Left, down, up, right</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">w</div>
+                <div class="description">Next word</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">b</div>
+                <div class="description">Previous word</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">0 / ^</div>
+                <div class="description">Start of line</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">$</div>
+                <div class="description">End of line</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">g</div>
+                <div class="description">Document start</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">G</div>
+                <div class="description">Document end</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">{ }</div>
+                <div class="description">Previous/next paragraph</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">Modes</h2>
+        <div class="shortcuts-grid">
+            <div class="shortcut">
+                <div class="key">i</div>
+                <div class="description">Insert mode</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">a</div>
+                <div class="description">Insert mode (after cursor)</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">v</div>
+                <div class="description">Visual mode</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">V</div>
+                <div class="description">Visual line mode</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">Esc</div>
+                <div class="description">Return to normal mode</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">Editing</h2>
+        <div class="shortcuts-grid">
+            <div class="shortcut">
+                <div class="key">d + motion</div>
+                <div class="description">Delete </div>
+            </div>
+            <div class="shortcut">
+                <div class="key">c + motion</div>
+                <div class="description">Change </div>
+            </div>
+            <div class="shortcut">
+                <div class="key">y + motion</div>
+                <div class="description">Yank/copy </div>
+            </div>
+            <div class="shortcut">
+                <div class="key">p</div>
+                <div class="description">Paste</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">u</div>
+                <div class="description">Undo</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">r</div>
+                <div class="description">Redo</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">o</div>
+                <div class="description">New line below</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">O</div>
+                <div class="description">New line above</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">I</div>
+                <div class="description">Go to start of line and insert</div>
+            </div>
+            <div class="shortcut">
+                <div class="key">A</div>
+                <div class="description">Go to end of line and insert</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tip">
+        <div class="tip-title">Quick Tip</div>
+        <div class="tip-content">
+            If you use Vimium/Surfing Keys, disable it for Google Docs
+        </div>
+    </div>
+
+    <footer>
+
+    </footer>
+</body>
+</html>
