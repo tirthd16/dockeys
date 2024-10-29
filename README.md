@@ -61,7 +61,7 @@ When in visual mode (`v` or `V`):
 
 ## Installation
 
-Chrome Web Store
+[Chrome Web Store](https://chromewebstore.google.com/detail/docskeys/mmmomengbindngnkjblabjebdfmaiccj)
 
 Install from source
 - Check out this repository
