@@ -44,13 +44,53 @@ function sendKeyEvent(key, mods = {shift:false, control:false}) {
     window.dispatchEvent(new CustomEvent("doc-keys-simulate-keypress", { detail: { keyCode, mods } }));
 }
 
+//Mode indicator thing (insert, visualline)
+const modeIndicator = document.createElement('div')
+modeIndicator.style.position = 'fixed'
+modeIndicator.style.bottom = '20px'
+modeIndicator.style.right = '20px'
+modeIndicator.style.padding = '8px 16px'
+modeIndicator.style.borderRadius = '4px'
+modeIndicator.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+modeIndicator.style.fontSize = '14px'
+modeIndicator.style.fontWeight = '500'
+modeIndicator.style.zIndex = '9999'
+document.body.appendChild(modeIndicator)
+
+function updateModeIndicator(currentMode) {
+    modeIndicator.textContent = currentMode.toUpperCase()
+    switch(currentMode) {
+        case 'normal':
+            modeIndicator.style.backgroundColor = '#1a73e8'
+            modeIndicator.style.color = 'white'
+            break
+        case 'insert':
+            modeIndicator.style.backgroundColor = '#34a853'
+            modeIndicator.style.color = 'white'
+            break
+        case 'visual':
+        case 'visualLine':
+            modeIndicator.style.backgroundColor = '#fbbc04'
+            modeIndicator.style.color = 'black'
+            break
+        case 'waitForFirstInput':
+        case 'waitForSecondInput':
+        case 'waitForVisualInput':
+            modeIndicator.style.backgroundColor = '#ea4335'
+            modeIndicator.style.color = 'white'
+            break
+    }
+}
+
 function switchModeToVisual() {
     mode = 'visualLine'
+    updateModeIndicator(mode)
     sendKeyEvent('right', { shift: true })
 }
 
 function switchModeToVisualLine() {
     mode = 'visualLine'
+    updateModeIndicator(mode)
     sendKeyEvent('home')
     sendKeyEvent('end', { shift: true })
 }
@@ -58,8 +98,9 @@ function switchModeToVisualLine() {
 function switchModeToNormal() {
     if (mode == "visualLine") sendKeyEvent("left")
     mode = 'normal'
+    updateModeIndicator(mode)
 
-    // Show a caret on top of cursor to indicate normal mode
+    //caret indicating visual mode 
     cursorTop.style.opacity = 1
     cursorTop.style.display = "block"
     cursorTop.style.backgroundColor = "black"
@@ -67,16 +108,19 @@ function switchModeToNormal() {
 
 function switchModeToInsert() {
     mode = 'insert'
+    updateModeIndicator(mode)
     cursorTop.style.opacity = 0
 }
 
 function switchModeToWait() {
     mode = "waitForFirstInput"
+    updateModeIndicator(mode)
     // define cursor style
 }
 
 function switchModeToWait2() {
     mode = "waitForSecondInput"
+    updateModeIndicator(mode)
     // define cursor style
 }
 
