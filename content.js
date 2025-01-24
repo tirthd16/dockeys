@@ -83,7 +83,7 @@ function updateModeIndicator(currentMode) {
 }
 
 function switchModeToVisual() {
-    mode = 'visualLine'
+    mode = 'visual'
     updateModeIndicator(mode)
     sendKeyEvent('right', { shift: true })
 }
@@ -281,6 +281,7 @@ function eventHandler(e) {
             case "normal":
                 handleKeyEventNormal(e.key)
                 break
+            case "visual":
             case "visualLine":
                 handleKeyEventVisualLine(e.key)
                 break
