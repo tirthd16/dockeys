@@ -9,12 +9,12 @@
 // before sending to layout engine and interpret them into respective vim motion/command.
 // Then implement those motions by sending relevant keystrokes. Essentially doing a keystroke to keystroke remapping. 
 
-
 const iframe = document.getElementsByTagName('iframe')[0]   // https://stackoverflow.com/a/4388829
 iframe.contentDocument.addEventListener('keydown', eventHandler, true)
 
 const cursorTop = document.getElementsByClassName("kix-cursor-top")[0] // element to edit to show normal vs insert mode
 let mode = 'normal'
+let tempnormal = false // State variable for indicating temperory normal mode
 
 // How to simulate a keypress in Chrome: http://stackoverflow.com/a/10520017/46237
 // Note that we have to do this keypress simulation in an injected script, because events dispatched
@@ -265,7 +265,16 @@ function waitForVisualInput(key) {
 
 
 function eventHandler(e) {
-    console.log(e)
+    
+    if (e.ctrlKey && mode=='insert' && e.key=='o' ){
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        switchModeToNormal()
+
+        // Turn on state variable to indicate temperory normal mode
+        tempnormal = true
+        return;
+    }
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     if (e.key == 'Escape') {
         e.preventDefault()
@@ -380,6 +389,15 @@ function handleKeyEventNormal(key) {
         case "r":
             clickMenu(menuItems.redo)
             break
+        default:
+            return;
+    }
+    // Check if operation is occuring in temperory normal mode after ctrl-o
+    if (tempnormal) {
+        tempnormal = false
+        if (mode != 'visual' && mode != 'visualLine'){  // Switch back to insert 
+            switchModeToInsert()                        // after operation
+            }
     }
 }
 

@@ -38,6 +38,7 @@ This project is heavily inspired by and uses much of code from [SheetKeys](https
 - `v` - Enter visual mode
 - `V` - Enter visual line mode
 - `Esc` - Return to normal mode
+- `Ctrl` + `o` - Temporary normal mode from insert mode
 
 #### Text Manipulation
 - `d` + motion - Delete (supports `dw`, `diw`, `dp`, `dip`, `dd`)
