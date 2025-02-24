@@ -92,7 +92,7 @@ function switchModeToVisualLine() {
     mode = 'visualLine'
     updateModeIndicator(mode)
     sendKeyEvent('home')
-    sendKeyEvent('end', { shift: true })
+    sendKeyEvent('down', { shift: true })
 }
 
 function switchModeToNormal() {

@@ -62,7 +62,7 @@ When in visual mode (`v` or `V`):
 
 ## Installation
 
-[Chrome Web Store](https://chromewebstore.google.com/detail/docskeys/mmmomengbindngnkjblabjebdfmaiccj)
+[Chrome Web Store](https://chromewebstore.google.com/detail/docskeys/mmmomengbindngnkjblabjebdfmaiccj) |
 [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/docskeys/)
 
 Install from source
