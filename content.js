@@ -15,6 +15,10 @@ iframe.contentDocument.addEventListener('keydown', eventHandler, true)
 const cursorTop = document.getElementsByClassName("kix-cursor-top")[0] // element to edit to show normal vs insert mode
 let mode = 'normal'
 let tempnormal = false // State variable for indicating temperory normal mode
+let multipleMotion = {
+    times:0,
+    mode:"normal"
+}
 
 // How to simulate a keypress in Chrome: http://stackoverflow.com/a/10520017/46237
 // Note that we have to do this keypress simulation in an injected script, because events dispatched
@@ -80,6 +84,12 @@ function updateModeIndicator(currentMode) {
             modeIndicator.style.color = 'white'
             break
     }
+}
+
+function repeatMotion(motion, times, key) {
+  for (let i = 0; i < times; i++) {
+      motion(key)
+  }
 }
 
 function switchModeToVisual() {
@@ -282,6 +292,24 @@ function waitForVisualInput(key) {
     mode = "visualLine"
 }
 
+function handleMutlipleMotion(key) {
+    if (/[0-9]/.test(key)) {
+        multipleMotion.times = Number(String(multipleMotion.times)+key)
+        return
+    }
+
+    switch (multipleMotion.mode) {
+        case "normal":
+            repeatMotion(handleKeyEventNormal,multipleMotion.times,key)
+            break
+        case "visualLine":
+        case "visual":
+            repeatMotion(handleKeyEventVisualLine,multipleMotion.times,key)
+            break
+    }
+
+    mode = multipleMotion.mode
+}
 
 
 
@@ -328,11 +356,22 @@ function eventHandler(e) {
             case "waitForVisualInput":
                 waitForVisualInput(e.key)
                 break
+            case "multipleMotion":
+                handleMutlipleMotion(e.key)
+                break
         }
     }
 }
 
 function handleKeyEventNormal(key) {
+
+    if (/[0-9]/.test(key)) {
+        mode = "multipleMotion"
+        multipleMotion.mode = "normal"
+        multipleMotion.times = Number(key)
+        return
+    }
+    
     switch (key) {
         case "h":
             sendKeyEvent("left")
@@ -434,6 +473,14 @@ function handleKeyEventNormal(key) {
 }
 
 function handleKeyEventVisualLine(key) {
+
+    if (/[0-9]/.test(key)) {
+        mode = "multipleMotion"
+        multipleMotion.mode = "visualLine"
+        multipleMotion.times = Number(key)
+        return
+    }
+
     switch (key) {
         case "":
             break
