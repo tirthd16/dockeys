@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "DocsKeys",
     "description": "Vim-style keyboard shortcuts for Google Docs",
-    "version": "1.2.1",
+    "version": "1.3",
     "icons": {
         "32": "icons/32.png",
         "128": "icons/128.png"
@@ -31,4 +31,10 @@
             ]
         }
     ]
+,
+"browser_specific_settings": {
+  "gecko": {
+    "id": "dockeys@tirthd16"
+  }
+}
 }

@@ -20,7 +20,7 @@ let tempnormal = false // State variable for indicating temperory normal mode
 // Note that we have to do this keypress simulation in an injected script, because events dispatched
 // by content scripts do not preserve overridden properties.
 const script = document.createElement("script");
-script.src = chrome.runtime.getURL("page_script.js");
+script.src = browser.runtime.getURL("page_script.js");
 document.documentElement.appendChild(script);
 
 const keyCodes = {
