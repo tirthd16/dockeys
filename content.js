@@ -96,7 +96,7 @@ function switchModeToVisualLine() {
 }
 
 function switchModeToNormal() {
-    if (mode == "visualLine") sendKeyEvent("left")
+    if (mode == "visualLine" || mode == "waitForFirstInput") sendKeyEvent("left")
     mode = 'normal'
     updateModeIndicator(mode)
 
@@ -135,12 +135,24 @@ function goToEndOfLine() {
     sendKeyEvent("end")
 }
 
+function selectToStartOfLine() {
+    sendKeyEvent("home", { shift: true })
+}
+
 function selectToEndOfLine() {
     sendKeyEvent("end", { shift: true })
 }
 
+function selectToStartOfWord() {
+    sendKeyEvent("left", { shift: true, control: true })
+}
+
 function selectToEndOfWord() {
     sendKeyEvent("right", { shift: true, control: true })
+}
+
+function goToEndOfWord() {
+    sendKeyEvent("right", { shift: false, control: true })
 }
 
 function goToStartOfWord() {
@@ -156,7 +168,6 @@ function selectToEndOfPara() {
     sendKeyEvent("down", { control: true, shift: true })
 }
 function goToEndOfPara(shift = false) {
-    console.log({ shift })
     sendKeyEvent("down", { control: true, shift })
     sendKeyEvent("right", { shift })
 }
@@ -236,6 +247,16 @@ function waitForFirstInput(key) {
             selectToEndOfPara()
             runLongStringOp()
             break
+        case "^":
+        case "_":
+        case "0":
+            selectToStartOfLine()
+            runLongStringOp()
+            break
+        case "$":
+            selectToEndOfLine()
+            runLongStringOp()
+            break
         case longStringOp:
             goToStartOfLine()
             selectToEndOfLine()
@@ -265,6 +286,10 @@ function waitForVisualInput(key) {
 
 
 function eventHandler(e) {
+    if (
+        ["Shift","Meta","Control","Alt",""].includes(e.key)
+    ) return
+        
     
     if (e.ctrlKey && mode=='insert' && e.key=='o' ){
         e.preventDefault()
@@ -328,10 +353,11 @@ function handleKeyEventNormal(key) {
             goToStartOfPara()
             break
         case "b":
-            sendKeyEvent("left", { control: true })
+            goToStartOfWord()
             break
+        case "e":
         case "w":
-            sendKeyEvent("right", { control: true })
+            goToEndOfWord()
             break
         case "g":
             sendKeyEvent("home", { control: true })
@@ -389,6 +415,12 @@ function handleKeyEventNormal(key) {
         case "r":
             clickMenu(menuItems.redo)
             break
+        case "/":
+            clickMenu(menuItems.find)
+            break
+        case "x":
+            sendKeyEvent("delete")
+            break
         default:
             return;
     }
@@ -428,10 +460,19 @@ function handleKeyEventVisualLine(key) {
             goToStartOfPara(true)
             break
         case "b":
-            sendKeyEvent("left", { control: true, shift: true })
+            selectToStartOfWord()
             break
+        case "e":
         case "w":
-            sendKeyEvent("right", { control: true, shift: true })
+            selectToEndOfWord()
+            break
+        case "^":
+        case "_":
+        case "0":
+            selectToStartOfLine()
+            break
+        case "$":
+            selectToEndOfLine()
             break
         case "G":
             sendKeyEvent("end", { control: true, shift: true })
@@ -461,6 +502,7 @@ let menuItems = {
     paste: { parent: "Edit", caption: "Paste" },
     redo: { parent: "Edit", caption: "Redo" },
     undo: { parent: "Edit", caption: "Undo" },
+    find: { parent: "Edit", caption: "Find" },
 }
 
 function clickMenu(itemCaption) {
