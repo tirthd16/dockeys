@@ -17,6 +17,17 @@ This project is heavily inspired by and uses much of code from [SheetKeys](https
 - `l` - Move cursor right
 - `w` - Move to start of next word
 - `b` - Move to start of previous word
+- `e` - Move to end of current word
+
+### Numbered Prefixed Motions
+
+- `{n}h` - Move cursor left n times
+- `{n}j` - Move cursor down n times
+- `{n}k` - Move cursor up n times
+- `{n}l` - Move cursor right n times
+- `{n}w` - Move to start of n words
+- `{n}b` - Move to start of n previous word
+- `{n}e` - Move to end of n word
 
 #### Line Navigation
 - `0` or `^` or `_` - Go to start of line
@@ -29,6 +40,7 @@ This project is heavily inspired by and uses much of code from [SheetKeys](https
 - `G` - Go to document end
 - `{` - Go to start of paragraph
 - `}` - Go to end of paragraph
+- `/` - Opens Find & Replace Dialog
 
 ### Editing Commands
 
@@ -41,12 +53,13 @@ This project is heavily inspired by and uses much of code from [SheetKeys](https
 - `Ctrl` + `o` - Temporary normal mode from insert mode
 
 #### Text Manipulation
-- `d` + motion - Delete (supports `dw`, `diw`, `dp`, `dip`, `dd`)
-- `c` + motion - Change (supports `cw`, `ciw`, `cp`, `cip`, `cc`)
-- `y` + motion - Yank/copy (supports `yw`, `yiw`, `yp`, `yip`, `yy`)
+- `d` + motion - Delete (supports `dw`, `diw`, `dp`, `dip`, `dd`, `d_`, `d0`, `d$`)
+- `c` + motion - Change (supports `cw`, `ciw`, `cp`, `cip`, `cc`, `c^`)
+- `y` + motion - Yank/copy (supports `yw`, `yiw`, `yp`, `yip`, `yy`, `y0`)
 - `p` - Paste
 - `u` - Undo
 - `r` - Redo
+- `x` - Delete character in front of cursor
 
 #### Line Operations
 - `o` - Add new line below and enter insert mode
@@ -89,4 +102,3 @@ Install from source
 ## License
 
 See [MIT-LICENSE.txt](MIT-LICENSE.txt) for details.
-
