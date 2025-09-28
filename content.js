@@ -21,6 +21,8 @@ let multipleMotion = {
 }
 
 let pendingSearch = null
+let lastCharSearch = null
+let lastSlashSearch = null
 
 // How to simulate a keypress in Chrome: http://stackoverflow.com/a/10520017/46237
 // Note that we have to do this keypress simulation in an injected script, because events dispatched
@@ -96,15 +98,27 @@ const SEARCH_CLOSE_SELECTORS = [
     '[aria-label="Close"]'
 ]
 
+const SEARCH_NEXT_SELECTORS = [
+    '[aria-label="Next result"]',
+    '[aria-label="Find next"]',
+    '[aria-label="Next"]'
+]
+
+const SEARCH_PREV_SELECTORS = [
+    '[aria-label="Previous result"]',
+    '[aria-label="Find previous"]',
+    '[aria-label="Previous"]'
+]
+
 const findOverlayModifiers = isMac ? { meta: true } : { control: true }
 
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-function dispatchKeyOnElement(el, keyCode, keyValue) {
+function dispatchKeyOnElement(el, keyCode, keyValue, mods = {}) {
     if (!el) return
-    const options = { key: keyValue, keyCode, which: keyCode, bubbles: true }
+    const options = { key: keyValue, keyCode, which: keyCode, bubbles: true, ...mods }
     const keyDown = new KeyboardEvent('keydown', options)
     Object.defineProperty(keyDown, 'keyCode', { get() { return keyCode } })
     Object.defineProperty(keyDown, 'which', { get() { return keyCode } })
@@ -123,7 +137,7 @@ function focusEditorSurface() {
     }
 }
 
-async function collapseSearchSelection(queryLength) {
+async function collapseSearchSelection(queryLength, offset = 0) {
     if (!queryLength) return
     await delay(40)
     sendKeyEvent('right')
@@ -132,6 +146,17 @@ async function collapseSearchSelection(queryLength) {
         sendKeyEvent('left')
         await delay(20)
     }
+    const stepKey = offset >= 0 ? 'right' : 'left'
+    for (let i = 0; i < Math.abs(offset); i++) {
+        sendKeyEvent(stepKey)
+        await delay(20)
+    }
+}
+
+function startSlashSearch() {
+    pendingSearch = { type: 'slash', query: '' }
+    mode = 'waitForSlashInput'
+    updateModeIndicator(mode)
 }
 
 // Send request to injected page script to simulate keypress
@@ -178,11 +203,16 @@ function updateModeIndicator(currentMode) {
         case 'waitForFindChar':
         case 'waitForSneakFirstChar':
         case 'waitForSneakSecondChar':
+        case 'waitForSlashInput':
         case 'searchPending':
             modeIndicator.style.backgroundColor = '#ea4335'
             modeIndicator.style.color = 'white'
             if (currentMode === 'waitForFindChar') label = 'F'
             if (currentMode === 'waitForSneakFirstChar' || currentMode === 'waitForSneakSecondChar') label = 'S'
+            if (currentMode === 'waitForSlashInput') {
+                const query = pendingSearch?.type === 'slash' ? pendingSearch.query : ''
+                label = `/${query || ''}`
+            }
             if (currentMode === 'searchPending') label = 'SEARCH'
             break
     }
@@ -216,16 +246,18 @@ function switchModeToNormal() {
     updateModeIndicator(mode)
 
     //caret indicating visual mode 
-    cursorTop.style.opacity = 1
-    cursorTop.style.display = "block"
-    cursorTop.style.backgroundColor = "black"
+    if (cursorTop) {
+        cursorTop.style.opacity = 1
+        cursorTop.style.display = "block"
+        cursorTop.style.backgroundColor = "black"
+    }
     pendingSearch = null
 }
 
 function switchModeToInsert() {
     mode = 'insert'
     updateModeIndicator(mode)
-    cursorTop.style.opacity = 0
+    if (cursorTop) cursorTop.style.opacity = 0
     pendingSearch = null
 }
 
@@ -313,7 +345,7 @@ function handleFindCharTarget(key) {
         return
     }
     pendingSearch = null
-    performDocSearch(key)
+    performDocSearch(key, { collapseOffset: 0, recordLast: { type: 'char', direction: 'forward' } })
 }
 
 function handleSneakFirstTarget(key) {
@@ -343,10 +375,91 @@ function handleSneakSecondTarget(key) {
     pendingSearch.query += key
     const query = pendingSearch.query
     pendingSearch = null
-    performDocSearch(query)
+    performDocSearch(query, { collapseOffset: 0, recordLast: { type: 'char', direction: 'forward' } })
 }
 
-async function performDocSearch(query) {
+function repeatLastCharSearch(reverse = false) {
+    if (!lastCharSearch || !lastCharSearch.query) {
+        return
+    }
+    const baseDirection = lastCharSearch.direction || 'forward'
+    const direction = reverse
+        ? (baseDirection === 'forward' ? 'backward' : 'forward')
+        : baseDirection
+    performDocSearch(lastCharSearch.query, {
+        collapseOffset: lastCharSearch.collapseOffset ?? 0,
+        direction,
+        skipFirst: true,
+        recordLast: { type: 'char', direction: baseDirection },
+    })
+}
+
+function repeatSlashSearch(reverse = false) {
+    if (!lastSlashSearch || !lastSlashSearch.query) {
+        return
+    }
+    const baseDirection = lastSlashSearch.direction || 'forward'
+    const direction = reverse
+        ? (baseDirection === 'forward' ? 'backward' : 'forward')
+        : baseDirection
+    performDocSearch(lastSlashSearch.query, {
+        collapseOffset: lastSlashSearch.collapseOffset ?? 0,
+        direction,
+        skipFirst: true,
+        recordLast: { type: 'slash', direction: baseDirection },
+    })
+}
+
+function handleSlashInput(key) {
+    if (!pendingSearch || pendingSearch.type !== 'slash') {
+        switchModeToNormal()
+        return
+    }
+
+    if (key === 'Enter') {
+        const query = pendingSearch.query
+        pendingSearch = null
+        if (!query) {
+            switchModeToNormal()
+            return
+        }
+        performDocSearch(query, { collapseOffset: 0, recordLast: { type: 'slash', direction: 'forward' }, skipFirst: false })
+        return
+    }
+
+    if (key === 'Escape') {
+        pendingSearch = null
+        switchModeToNormal()
+        return
+    }
+
+    if (key === 'Backspace') {
+        if (pendingSearch.query.length > 0) {
+            pendingSearch.query = pendingSearch.query.slice(0, -1)
+        }
+        updateModeIndicator(mode)
+        return
+    }
+
+    if (key.length === 1 && key !== 'Enter') {
+        pendingSearch.query += key
+        updateModeIndicator(mode)
+        return
+    }
+}
+
+async function performDocSearch(
+    query,
+    {
+        openOverlay = true,
+        openMethod = 'shortcut',
+        inputEl = null,
+        collapseOffset = 0,
+        direction = 'forward',
+        skipFirst = false,
+        recordLast = null,
+    } = {}
+) {
     if (!query) {
         switchModeToNormal()
         return
@@ -354,18 +467,77 @@ async function performDocSearch(query) {
     mode = 'searchPending'
     updateModeIndicator(mode)
     try {
-        sendKeyEvent('f', findOverlayModifiers)
-        await delay(50)
+        const editorSelection = iframe?.contentWindow?.getSelection?.()
+        const initialRange = editorSelection && editorSelection.rangeCount > 0
+            ? editorSelection.getRangeAt(0).cloneRange()
+            : null
 
-        const input = await waitForElement(SEARCH_INPUT_SELECTORS)
+        let input = inputEl
+        if (openOverlay) {
+            if (initialRange) {
+                const resetSelection = iframe?.contentWindow?.getSelection?.()
+                if (resetSelection) {
+                    resetSelection.removeAllRanges()
+                    resetSelection.addRange(initialRange)
+                }
+            }
+            if (openMethod === 'menu') {
+                clickMenu(menuItems.find)
+            } else {
+                sendKeyEvent('f', findOverlayModifiers)
+            }
+            await delay(50)
+            input = await waitForElement(SEARCH_INPUT_SELECTORS)
+        } else if (!input) {
+            input = await waitForElement(SEARCH_INPUT_SELECTORS)
+        }
+
         input.focus()
-        input.value = ''
-        input.dispatchEvent(new Event('input', { bubbles: true }))
+        if (openOverlay) {
+            input.value = ''
+            input.dispatchEvent(new Event('input', { bubbles: true }))
+        }
         input.value = query
         input.dispatchEvent(new Event('input', { bubbles: true }))
         input.setSelectionRange(query.length, query.length)
 
         await delay(90)
+
+        let shouldSkip = skipFirst
+        const updatedSelection = iframe?.contentWindow?.getSelection?.()
+        if (initialRange && updatedSelection && updatedSelection.rangeCount > 0) {
+            const resultRange = updatedSelection.getRangeAt(0).cloneRange()
+            const comparison = resultRange.compareBoundaryPoints(Range.START_TO_START, initialRange)
+            if (skipFirst) {
+                if (direction === 'forward') {
+                    shouldSkip = comparison <= 0
+                } else if (direction === 'backward') {
+                    shouldSkip = comparison >= 0
+                }
+            }
+        }
+
+        if (direction === 'forward' && shouldSkip) {
+            const nextButton = querySelectorAny(SEARCH_NEXT_SELECTORS)
+            if (nextButton) {
+                simulateClick(nextButton)
+            } else {
+                dispatchKeyOnElement(input, keyCodes.enter, 'Enter')
+            }
+            await delay(90)
+        } else if (direction === 'backward') {
+            const prevButton = querySelectorAny(SEARCH_PREV_SELECTORS)
+            if (prevButton) {
+                const iterations = shouldSkip ? 1 : 0
+                for (let i = 0; i < iterations; i++) {
+                    simulateClick(prevButton)
+                    await delay(90)
+                }
+            } else if (shouldSkip) {
+                dispatchKeyOnElement(input, keyCodes.enter, 'Enter', { shiftKey: true })
+                await delay(90)
+            }
+        }
 
         const closeButton = querySelectorAny(SEARCH_CLOSE_SELECTORS)
         if (closeButton) {
@@ -374,7 +546,20 @@ async function performDocSearch(query) {
             dispatchKeyOnElement(document.activeElement || document.body, keyCodes.esc, 'Escape')
         }
         focusEditorSurface()
-        await collapseSearchSelection(query.length)
+        await collapseSearchSelection(query.length, collapseOffset)
+        if (recordLast) {
+            const entry = {
+                query,
+                type: recordLast.type,
+                direction: recordLast.direction || 'forward',
+                collapseOffset,
+            }
+            if (recordLast.type === 'slash') {
+                lastSlashSearch = entry
+            } else {
+                lastCharSearch = entry
+            }
+        }
     } catch (error) {
         console.warn('DocKeys: Search failed', error)
         focusEditorSurface()
@@ -497,7 +682,7 @@ function handleMutlipleMotion(key) {
         return
     }
 
-    if (["f", "s"].includes(key)) {
+    if (["f", "s", ";", ",", "/", "n", "N"].includes(key)) {
         // Counts for find-style motions are not supported yet; fall back to single execution.
         mode = multipleMotion.mode
         if (mode === "normal") {
@@ -548,6 +733,8 @@ function eventHandler(e) {
     }
     if (mode != 'insert') {
         e.preventDefault()
+        e.stopPropagation()
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation()
         switch (mode) {
             case "normal":
                 handleKeyEventNormal(e.key)
@@ -576,6 +763,9 @@ function eventHandler(e) {
                 break
             case "waitForSneakSecondChar":
                 handleSneakSecondTarget(e.key)
+                break
+            case "waitForSlashInput":
+                handleSlashInput(e.key)
                 break
             case "searchPending":
                 break
@@ -623,6 +813,18 @@ function handleKeyEventNormal(key) {
             break
         case "G":
             sendKeyEvent("end", { control: true })
+            break
+        case "n":
+            repeatSlashSearch(false)
+            break
+        case "N":
+            repeatSlashSearch(true)
+            break
+        case ";":
+            repeatLastCharSearch(false)
+            break
+        case ",":
+            repeatLastCharSearch(true)
             break
         case "f":
             startFindCommand('f')
@@ -681,7 +883,7 @@ function handleKeyEventNormal(key) {
             clickMenu(menuItems.redo)
             break
         case "/":
-            clickMenu(menuItems.find)
+            startSlashSearch()
             break
         case "x":
             sendKeyEvent("delete")
