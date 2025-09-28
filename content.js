@@ -27,6 +27,8 @@ const script = document.createElement("script");
 script.src = chrome.runtime.getURL("page_script.js");
 document.documentElement.appendChild(script);
 
+const isMac = /Mac/.test(navigator.platform || navigator.userAgent);
+
 const keyCodes = {
     backspace: 8,
     enter: 13,
@@ -40,12 +42,24 @@ const keyCodes = {
     "delete": 46,
 };
 
+const wordModifierKey = isMac ? 'alt' : 'control'
+const paragraphModifierKey = isMac ? 'alt' : 'control'
+
+function wordMods(shift = false) {
+    return { shift, [wordModifierKey]: true }
+}
+
+function paragraphMods(shift = false) {
+    return { shift, [paragraphModifierKey]: true }
+}
+
 // Send request to injected page script to simulate keypress
 // Messages are passed to page script via "doc-keys-simulate-keypress" events, which are dispatched
 // on the window object by the content script.
-function sendKeyEvent(key, mods = {shift:false, control:false}) {
+function sendKeyEvent(key, mods = {}) {
     const keyCode = keyCodes[key]
-    window.dispatchEvent(new CustomEvent("doc-keys-simulate-keypress", { detail: { keyCode, mods } }));
+    const defaultMods = { shift: false, control: false, alt: false, meta: false }
+    window.dispatchEvent(new CustomEvent("doc-keys-simulate-keypress", { detail: { keyCode, mods: { ...defaultMods, ...mods } } }));
 }
 
 //Mode indicator thing (insert, visualline)
@@ -154,19 +168,19 @@ function selectToEndOfLine() {
 }
 
 function selectToStartOfWord() {
-    sendKeyEvent("left", { shift: true, control: true })
+    sendKeyEvent("left", wordMods(true))
 }
 
 function selectToEndOfWord() {
-    sendKeyEvent("right", { shift: true, control: true })
+    sendKeyEvent("right", wordMods(true))
 }
 
 function goToEndOfWord() {
-    sendKeyEvent("right", { shift: false, control: true })
+    sendKeyEvent("right", wordMods())
 }
 
 function goToStartOfWord() {
-    sendKeyEvent("left", { shift: false, control: true })
+    sendKeyEvent("left", wordMods())
 }
 
 function goToTop() {
@@ -175,14 +189,14 @@ function goToTop() {
 }
 
 function selectToEndOfPara() {
-    sendKeyEvent("down", { control: true, shift: true })
+    sendKeyEvent("down", paragraphMods(true))
 }
 function goToEndOfPara(shift = false) {
-    sendKeyEvent("down", { control: true, shift })
+    sendKeyEvent("down", paragraphMods(shift))
     sendKeyEvent("right", { shift })
 }
 function goToStartOfPara(shift = false) {
-    sendKeyEvent("up", { control: true, shift })
+    sendKeyEvent("up", paragraphMods(shift))
 }
 
 
