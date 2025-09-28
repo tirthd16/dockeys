@@ -20,6 +20,8 @@ let multipleMotion = {
     mode:"normal"
 }
 
+let pendingSearch = null
+
 // How to simulate a keypress in Chrome: http://stackoverflow.com/a/10520017/46237
 // Note that we have to do this keypress simulation in an injected script, because events dispatched
 // by content scripts do not preserve overridden properties.
@@ -40,6 +42,7 @@ const keyCodes = {
     right: 39,
     down: 40,
     "delete": 46,
+    f: 70,
 };
 
 const wordModifierKey = isMac ? 'alt' : 'control'
@@ -51,6 +54,84 @@ function wordMods(shift = false) {
 
 function paragraphMods(shift = false) {
     return { shift, [paragraphModifierKey]: true }
+}
+
+function querySelectorAny(selectors, root = document) {
+    if (!Array.isArray(selectors)) selectors = [selectors]
+    for (const selector of selectors) {
+        const el = root.querySelector?.(selector)
+        if (el) return el
+    }
+    return null
+}
+
+function waitForElement(selectors, { attempts = 40, interval = 50 } = {}) {
+    return new Promise((resolve, reject) => {
+        let tries = 0
+        const probe = () => {
+            const el = querySelectorAny(selectors)
+            if (el) {
+                resolve(el)
+                return
+            }
+            tries += 1
+            if (tries >= attempts) {
+                reject(new Error('Element not found'))
+                return
+            }
+            setTimeout(probe, interval)
+        }
+        probe()
+    })
+}
+
+const SEARCH_INPUT_SELECTORS = [
+    'input[aria-label="Search in doc"]',
+    'input[aria-label="Search in document"]',
+    'input[aria-label="Find in document"]'
+]
+
+const SEARCH_CLOSE_SELECTORS = [
+    '[aria-label="Close search"]',
+    '[aria-label="Close"]'
+]
+
+const findOverlayModifiers = isMac ? { meta: true } : { control: true }
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function dispatchKeyOnElement(el, keyCode, keyValue) {
+    if (!el) return
+    const options = { key: keyValue, keyCode, which: keyCode, bubbles: true }
+    const keyDown = new KeyboardEvent('keydown', options)
+    Object.defineProperty(keyDown, 'keyCode', { get() { return keyCode } })
+    Object.defineProperty(keyDown, 'which', { get() { return keyCode } })
+    const keyUp = new KeyboardEvent('keyup', options)
+    Object.defineProperty(keyUp, 'keyCode', { get() { return keyCode } })
+    Object.defineProperty(keyUp, 'which', { get() { return keyCode } })
+    el.dispatchEvent(keyDown)
+    el.dispatchEvent(keyUp)
+}
+
+function focusEditorSurface() {
+    try {
+        iframe?.contentWindow?.focus()
+    } catch (error) {
+        console.warn('DocKeys: Unable to focus editor', error)
+    }
+}
+
+async function collapseSearchSelection(queryLength) {
+    if (!queryLength) return
+    await delay(40)
+    sendKeyEvent('right')
+    await delay(40)
+    for (let i = 0; i < queryLength; i++) {
+        sendKeyEvent('left')
+        await delay(20)
+    }
 }
 
 // Send request to injected page script to simulate keypress
@@ -76,7 +157,7 @@ modeIndicator.style.zIndex = '9999'
 document.body.appendChild(modeIndicator)
 
 function updateModeIndicator(currentMode) {
-    modeIndicator.textContent = currentMode.toUpperCase()
+    let label = currentMode.toUpperCase()
     switch(currentMode) {
         case 'normal':
             modeIndicator.style.backgroundColor = '#1a73e8'
@@ -94,10 +175,18 @@ function updateModeIndicator(currentMode) {
         case 'waitForFirstInput':
         case 'waitForSecondInput':
         case 'waitForVisualInput':
+        case 'waitForFindChar':
+        case 'waitForSneakFirstChar':
+        case 'waitForSneakSecondChar':
+        case 'searchPending':
             modeIndicator.style.backgroundColor = '#ea4335'
             modeIndicator.style.color = 'white'
+            if (currentMode === 'waitForFindChar') label = 'F'
+            if (currentMode === 'waitForSneakFirstChar' || currentMode === 'waitForSneakSecondChar') label = 'S'
+            if (currentMode === 'searchPending') label = 'SEARCH'
             break
     }
+    modeIndicator.textContent = label
 }
 
 function repeatMotion(motion, times, key) {
@@ -110,6 +199,7 @@ function switchModeToVisual() {
     mode = 'visual'
     updateModeIndicator(mode)
     sendKeyEvent('right', { shift: true })
+    pendingSearch = null
 }
 
 function switchModeToVisualLine() {
@@ -117,6 +207,7 @@ function switchModeToVisualLine() {
     updateModeIndicator(mode)
     sendKeyEvent('home')
     sendKeyEvent('down', { shift: true })
+    pendingSearch = null
 }
 
 function switchModeToNormal() {
@@ -128,12 +219,14 @@ function switchModeToNormal() {
     cursorTop.style.opacity = 1
     cursorTop.style.display = "block"
     cursorTop.style.backgroundColor = "black"
+    pendingSearch = null
 }
 
 function switchModeToInsert() {
     mode = 'insert'
     updateModeIndicator(mode)
     cursorTop.style.opacity = 0
+    pendingSearch = null
 }
 
 function switchModeToWait() {
@@ -197,6 +290,98 @@ function goToEndOfPara(shift = false) {
 }
 function goToStartOfPara(shift = false) {
     sendKeyEvent("up", paragraphMods(shift))
+}
+
+
+function startFindCommand(type) {
+    pendingSearch = { type, query: '' }
+    if (type === 'f') {
+        mode = 'waitForFindChar'
+    } else if (type === 's') {
+        mode = 'waitForSneakFirstChar'
+    }
+    updateModeIndicator(mode)
+}
+
+function handleFindCharTarget(key) {
+    if (!pendingSearch || pendingSearch.type !== 'f') {
+        switchModeToNormal()
+        return
+    }
+    if (key.length !== 1) {
+        switchModeToNormal()
+        return
+    }
+    pendingSearch = null
+    performDocSearch(key)
+}
+
+function handleSneakFirstTarget(key) {
+    if (!pendingSearch || pendingSearch.type !== 's') {
+        switchModeToNormal()
+        return
+    }
+    if (key.length !== 1) {
+        switchModeToNormal()
+        return
+    }
+    pendingSearch.query = key
+    mode = 'waitForSneakSecondChar'
+    updateModeIndicator(mode)
+}
+
+function handleSneakSecondTarget(key) {
+    if (!pendingSearch || pendingSearch.type !== 's') {
+        switchModeToNormal()
+        return
+    }
+    if (key.length !== 1) {
+        switchModeToNormal()
+        pendingSearch = null
+        return
+    }
+    pendingSearch.query += key
+    const query = pendingSearch.query
+    pendingSearch = null
+    performDocSearch(query)
+}
+
+async function performDocSearch(query) {
+    if (!query) {
+        switchModeToNormal()
+        return
+    }
+    mode = 'searchPending'
+    updateModeIndicator(mode)
+    try {
+        sendKeyEvent('f', findOverlayModifiers)
+        await delay(50)
+
+        const input = await waitForElement(SEARCH_INPUT_SELECTORS)
+        input.focus()
+        input.value = ''
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+        input.value = query
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+        input.setSelectionRange(query.length, query.length)
+
+        await delay(90)
+
+        const closeButton = querySelectorAny(SEARCH_CLOSE_SELECTORS)
+        if (closeButton) {
+            simulateClick(closeButton)
+        } else {
+            dispatchKeyOnElement(document.activeElement || document.body, keyCodes.esc, 'Escape')
+        }
+        focusEditorSurface()
+        await collapseSearchSelection(query.length)
+    } catch (error) {
+        console.warn('DocKeys: Search failed', error)
+        focusEditorSurface()
+    } finally {
+        focusEditorSurface()
+        switchModeToNormal()
+    }
 }
 
 
@@ -312,6 +497,16 @@ function handleMutlipleMotion(key) {
         return
     }
 
+    if (["f", "s"].includes(key)) {
+        // Counts for find-style motions are not supported yet; fall back to single execution.
+        mode = multipleMotion.mode
+        if (mode === "normal") {
+            multipleMotion.times = 0
+            handleKeyEventNormal(key)
+        }
+        return
+    }
+
     switch (multipleMotion.mode) {
         case "normal":
             repeatMotion(handleKeyEventNormal,multipleMotion.times,key)
@@ -373,6 +568,17 @@ function eventHandler(e) {
             case "multipleMotion":
                 handleMutlipleMotion(e.key)
                 break
+            case "waitForFindChar":
+                handleFindCharTarget(e.key)
+                break
+            case "waitForSneakFirstChar":
+                handleSneakFirstTarget(e.key)
+                break
+            case "waitForSneakSecondChar":
+                handleSneakSecondTarget(e.key)
+                break
+            case "searchPending":
+                break
         }
     }
 }
@@ -417,6 +623,12 @@ function handleKeyEventNormal(key) {
             break
         case "G":
             sendKeyEvent("end", { control: true })
+            break
+        case "f":
+            startFindCommand('f')
+            break
+        case "s":
+            startFindCommand('s')
             break
         case "c":
         case "d":
@@ -567,7 +779,9 @@ let menuItems = {
 }
 
 function clickMenu(itemCaption) {
-    simulateClick(getMenuItem(itemCaption));
+    const target = getMenuItem(itemCaption);
+    if (!target) return;
+    simulateClick(target);
 }
 
 function clickToolbarButton(captionList) {
