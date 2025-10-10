@@ -22,6 +22,7 @@ const simulateKeyEvent = function(eventType, el, args) {
             return this.keyCodeVal;
         },
     });
+    const mods = args.mods || {};
     event.initKeyboardEvent(
         eventType, // eventName
         true, // canBubble
@@ -29,14 +30,24 @@ const simulateKeyEvent = function(eventType, el, args) {
         document.defaultView, // view
         "", // keyIdentifier string
         false, // (not sure)
-        args.mods?.control, // control
-        null, // (not sure)
-        args.mods?.shift, // shift
-        false,
+        !!mods.control, // control
+        !!mods.alt, // alt
+        !!mods.shift, // shift
+        !!mods.meta, // meta
         args.keyCode, // keyCode
         args.keyCode, // (not sure)
     );
     event.keyCodeVal = args.keyCode;
+    Object.defineProperty(event, "altKey", {
+        get() {
+            return !!mods.alt;
+        },
+    });
+    Object.defineProperty(event, "metaKey", {
+        get() {
+            return !!mods.meta;
+        },
+    });
     el.dispatchEvent(event);
 };
 
@@ -47,5 +58,4 @@ window.addEventListener("doc-keys-simulate-keypress", function(event) {
     simulateKeyEvent("keydown", editorEl, args);
     simulateKeyEvent("keyup", editorEl, args);
 });
-
 
