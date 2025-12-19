@@ -15,6 +15,10 @@ iframe.contentDocument.addEventListener('keydown', eventHandler, true)
 const cursorTop = document.getElementsByClassName("kix-cursor-top")[0] // element to edit to show normal vs insert mode
 let mode = 'normal'
 let tempnormal = false // State variable for indicating temperory normal mode
+let multipleMotion = {
+    times:0,
+    mode:"normal"
+}
 
 // How to simulate a keypress in Chrome: http://stackoverflow.com/a/10520017/46237
 // Note that we have to do this keypress simulation in an injected script, because events dispatched
@@ -22,6 +26,8 @@ let tempnormal = false // State variable for indicating temperory normal mode
 const script = document.createElement("script");
 script.src = browser.runtime.getURL("page_script.js");
 document.documentElement.appendChild(script);
+
+const isMac = /Mac/.test(navigator.platform || navigator.userAgent);
 
 const keyCodes = {
     backspace: 8,
@@ -36,12 +42,24 @@ const keyCodes = {
     "delete": 46,
 };
 
+const wordModifierKey = isMac ? 'alt' : 'control'
+const paragraphModifierKey = isMac ? 'alt' : 'control'
+
+function wordMods(shift = false) {
+    return { shift, [wordModifierKey]: true }
+}
+
+function paragraphMods(shift = false) {
+    return { shift, [paragraphModifierKey]: true }
+}
+
 // Send request to injected page script to simulate keypress
 // Messages are passed to page script via "doc-keys-simulate-keypress" events, which are dispatched
 // on the window object by the content script.
-function sendKeyEvent(key, mods = {shift:false, control:false}) {
+function sendKeyEvent(key, mods = {}) {
     const keyCode = keyCodes[key]
-    window.dispatchEvent(new CustomEvent("doc-keys-simulate-keypress", { detail: { keyCode, mods } }));
+    const defaultMods = { shift: false, control: false, alt: false, meta: false }
+    window.dispatchEvent(new CustomEvent("doc-keys-simulate-keypress", { detail: { keyCode, mods: { ...defaultMods, ...mods } } }));
 }
 
 //Mode indicator thing (insert, visualline)
@@ -82,6 +100,12 @@ function updateModeIndicator(currentMode) {
     }
 }
 
+function repeatMotion(motion, times, key) {
+  for (let i = 0; i < times; i++) {
+      motion(key)
+  }
+}
+
 function switchModeToVisual() {
     mode = 'visual'
     updateModeIndicator(mode)
@@ -96,7 +120,7 @@ function switchModeToVisualLine() {
 }
 
 function switchModeToNormal() {
-    if (mode == "visualLine") sendKeyEvent("left")
+    if (mode == "visualLine" || mode == "waitForFirstInput") sendKeyEvent("left")
     mode = 'normal'
     updateModeIndicator(mode)
 
@@ -135,16 +159,28 @@ function goToEndOfLine() {
     sendKeyEvent("end")
 }
 
+function selectToStartOfLine() {
+    sendKeyEvent("home", { shift: true })
+}
+
 function selectToEndOfLine() {
     sendKeyEvent("end", { shift: true })
 }
 
+function selectToStartOfWord() {
+    sendKeyEvent("left", wordMods(true))
+}
+
 function selectToEndOfWord() {
-    sendKeyEvent("right", { shift: true, control: true })
+    sendKeyEvent("right", wordMods(true))
+}
+
+function goToEndOfWord() {
+    sendKeyEvent("right", wordMods())
 }
 
 function goToStartOfWord() {
-    sendKeyEvent("left", { shift: false, control: true })
+    sendKeyEvent("left", wordMods())
 }
 
 function goToTop() {
@@ -153,15 +189,14 @@ function goToTop() {
 }
 
 function selectToEndOfPara() {
-    sendKeyEvent("down", { control: true, shift: true })
+    sendKeyEvent("down", paragraphMods(true))
 }
 function goToEndOfPara(shift = false) {
-    console.log({ shift })
-    sendKeyEvent("down", { control: true, shift })
+    sendKeyEvent("down", paragraphMods(shift))
     sendKeyEvent("right", { shift })
 }
 function goToStartOfPara(shift = false) {
-    sendKeyEvent("up", { control: true, shift })
+    sendKeyEvent("up", paragraphMods(shift))
 }
 
 
@@ -236,6 +271,16 @@ function waitForFirstInput(key) {
             selectToEndOfPara()
             runLongStringOp()
             break
+        case "^":
+        case "_":
+        case "0":
+            selectToStartOfLine()
+            runLongStringOp()
+            break
+        case "$":
+            selectToEndOfLine()
+            runLongStringOp()
+            break
         case longStringOp:
             goToStartOfLine()
             selectToEndOfLine()
@@ -261,10 +306,32 @@ function waitForVisualInput(key) {
     mode = "visualLine"
 }
 
+function handleMutlipleMotion(key) {
+    if (/[0-9]/.test(key)) {
+        multipleMotion.times = Number(String(multipleMotion.times)+key)
+        return
+    }
+
+    switch (multipleMotion.mode) {
+        case "normal":
+            repeatMotion(handleKeyEventNormal,multipleMotion.times,key)
+            break
+        case "visualLine":
+        case "visual":
+            repeatMotion(handleKeyEventVisualLine,multipleMotion.times,key)
+            break
+    }
+
+    mode = multipleMotion.mode
+}
 
 
 
 function eventHandler(e) {
+    if (
+        ["Shift","Meta","Control","Alt",""].includes(e.key)
+    ) return
+        
     
     if (e.ctrlKey && mode=='insert' && e.key=='o' ){
         e.preventDefault()
@@ -303,11 +370,22 @@ function eventHandler(e) {
             case "waitForVisualInput":
                 waitForVisualInput(e.key)
                 break
+            case "multipleMotion":
+                handleMutlipleMotion(e.key)
+                break
         }
     }
 }
 
 function handleKeyEventNormal(key) {
+
+    if (/[0-9]/.test(key)) {
+        mode = "multipleMotion"
+        multipleMotion.mode = "normal"
+        multipleMotion.times = Number(key)
+        return
+    }
+    
     switch (key) {
         case "h":
             sendKeyEvent("left")
@@ -328,10 +406,11 @@ function handleKeyEventNormal(key) {
             goToStartOfPara()
             break
         case "b":
-            sendKeyEvent("left", { control: true })
+            goToStartOfWord()
             break
+        case "e":
         case "w":
-            sendKeyEvent("right", { control: true })
+            goToEndOfWord()
             break
         case "g":
             sendKeyEvent("home", { control: true })
@@ -389,6 +468,12 @@ function handleKeyEventNormal(key) {
         case "r":
             clickMenu(menuItems.redo)
             break
+        case "/":
+            clickMenu(menuItems.find)
+            break
+        case "x":
+            sendKeyEvent("delete")
+            break
         default:
             return;
     }
@@ -402,6 +487,14 @@ function handleKeyEventNormal(key) {
 }
 
 function handleKeyEventVisualLine(key) {
+
+    if (/[0-9]/.test(key)) {
+        mode = "multipleMotion"
+        multipleMotion.mode = "visualLine"
+        multipleMotion.times = Number(key)
+        return
+    }
+
     switch (key) {
         case "":
             break
@@ -428,10 +521,19 @@ function handleKeyEventVisualLine(key) {
             goToStartOfPara(true)
             break
         case "b":
-            sendKeyEvent("left", { control: true, shift: true })
+            selectToStartOfWord()
             break
+        case "e":
         case "w":
-            sendKeyEvent("right", { control: true, shift: true })
+            selectToEndOfWord()
+            break
+        case "^":
+        case "_":
+        case "0":
+            selectToStartOfLine()
+            break
+        case "$":
+            selectToEndOfLine()
             break
         case "G":
             sendKeyEvent("end", { control: true, shift: true })
@@ -461,6 +563,7 @@ let menuItems = {
     paste: { parent: "Edit", caption: "Paste" },
     redo: { parent: "Edit", caption: "Redo" },
     undo: { parent: "Edit", caption: "Undo" },
+    find: { parent: "Edit", caption: "Find" },
 }
 
 function clickMenu(itemCaption) {
