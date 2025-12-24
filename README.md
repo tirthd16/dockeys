@@ -78,12 +78,21 @@ When in visual mode (`v` or `V`):
 [Chrome Web Store](https://chromewebstore.google.com/detail/docskeys/mmmomengbindngnkjblabjebdfmaiccj) |
 [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/docskeys/)
 
-Install from source
-- Check out this repository
-- Navigate to chrome://extensions in Chrome
+### Install from source
+
+#### Chrome
+- Clone or download this repository
+- Navigate to `chrome://extensions` in Chrome
 - Toggle into Developer Mode
 - Click on "Load Unpacked Extension..."
 - Select the docskeys folder
+
+#### Firefox
+- Clone or download the [firefox branch](https://github.com/tirthd16/dockeys/tree/firefox) of this repository
+- Navigate to `about:debugging` in Firefox
+- Click on "This Firefox"
+- Click on "Load Temporary Add-on..."
+- Select the manifest.json file from the docskeys folder
 
 ## Usage
 
