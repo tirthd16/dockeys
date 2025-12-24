@@ -9,7 +9,7 @@
 // before sending to layout engine and interpret them into respective vim motion/command.
 // Then implement those motions by sending relevant keystrokes. Essentially doing a keystroke to keystroke remapping. 
 
-const iframe = document.getElementsByTagName('iframe')[0]   // https://stackoverflow.com/a/4388829
+const iframe = document.querySelector("iframe.docs-texteventtarget-iframe")
 iframe.contentDocument.addEventListener('keydown', eventHandler, true)
 
 const cursorTop = document.getElementsByClassName("kix-cursor-top")[0] // element to edit to show normal vs insert mode
@@ -59,7 +59,9 @@ function paragraphMods(shift = false) {
 function sendKeyEvent(key, mods = {}) {
     const keyCode = keyCodes[key]
     const defaultMods = { shift: false, control: false, alt: false, meta: false }
-    window.dispatchEvent(new CustomEvent("doc-keys-simulate-keypress", { detail: { keyCode, mods: { ...defaultMods, ...mods } } }));
+    const args = { keyCode, mods: { ...defaultMods, ...mods } }
+    // Because of firefox security boundaries we have to clone the args before dispatch
+    window.dispatchEvent(new CustomEvent("doc-keys-simulate-keypress", { detail:cloneInto(args,window)}));
 }
 
 //Mode indicator thing (insert, visualline)
