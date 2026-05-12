@@ -11,10 +11,3 @@ todo: dockeys
 - add deployable relative line numbers (g-line jumping) & marking
 
 - add F{char} - line search?  if can "see" line chars, then can add `{c/d/y}a{ ( / { / " / ' < / t }` and `{c/d/y}i{ / " / ' < / t }`
-
-
-COMPLETED THIS BATCH:
-- fix `o` when in dashed list (remove shift from enter)
-- add dG - delete to bottom
-- add s (delete and enter insert)
-- add Shift+j (J) bring line below to current line (end of line and delete)
