@@ -1,17 +1,20 @@
-dockeys:
+todo: dockeys
 
-- fix #dd (delete multiple lines)
-
-- fix ce, de
-
-- add deployable relative line numbers (g-line jumping) & marking
-
-- add Shift+J bring line below to current line (down, home, backspace)
+- add #dd (delete multiple lines)
 
 - add #yy (yank multiple lines)
 
-- add <<, >> to tab / shift tab?
+- add <<, >> to tab / shift tab
 
-- add F{char} - line search?
+- fix ce, de (harder than looks as Google Docs cut by default removes extra space?)
 
+- add deployable relative line numbers (g-line jumping) & marking
+
+- add F{char} - line search?  if can "see" line chars, then can add `{c/d/y}a{ ( / { / " / ' < / t }` and `{c/d/y}i{ / " / ' < / t }`
+
+
+COMPLETED THIS BATCH:
+- fix `o` when in dashed list (remove shift from enter)
+- add dG - delete to bottom
 - add s (delete and enter insert)
+- add Shift+j (J) bring line below to current line (end of line and delete)

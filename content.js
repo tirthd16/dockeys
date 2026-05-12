@@ -218,13 +218,13 @@ function goToStartOfPara(shift = false) {
 
 function addLineTop() {
     goToStartOfLine()
-    sendKeyEvent("enter", { shift: true })
+    sendKeyEvent("enter", { shift: false })
     sendKeyEvent("up")
     switchModeToInsert()
 }
 function addLineBottom() {
     goToEndOfLine()
-    sendKeyEvent("enter", { shift: true })
+    sendKeyEvent("enter", { shift: false })
     switchModeToInsert()
 }
 
@@ -295,6 +295,10 @@ function waitForFirstInput(key) {
             break
         case "$":
             selectToEndOfLine()
+            runLongStringOp()
+            break
+        case "G":
+            goToDocEnd(true)
             runLongStringOp()
             break
         case longStringOp:
@@ -490,6 +494,14 @@ function handleKeyEventNormal(key) {
             clickMenu(menuItems.find)
             break
         case "x":
+            sendKeyEvent("delete")
+            break
+        case "s":
+            sendKeyEvent("delete")
+            switchModeToInsert()
+            break
+        case "J":
+            goToEndOfLine()
             sendKeyEvent("delete")
             break
         default:
