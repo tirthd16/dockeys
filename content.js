@@ -9,10 +9,7 @@
 // before sending to layout engine and interpret them into respective vim motion/command.
 // Then implement those motions by sending relevant keystrokes. Essentially doing a keystroke to keystroke remapping. 
 
-const iframe = document.getElementsByTagName('iframe')[0]   // https://stackoverflow.com/a/4388829
-iframe.contentDocument.addEventListener('keydown', eventHandler, true)
-
-const cursorTop = document.getElementsByClassName("kix-cursor-top")[0] // element to edit to show normal vs insert mode
+let cursorTop = null
 let mode = 'normal'
 let tempnormal = false // State variable for indicating temperory normal mode
 let multipleMotion = {
@@ -124,16 +121,19 @@ function switchModeToNormal() {
     mode = 'normal'
     updateModeIndicator(mode)
 
-    //caret indicating visual mode 
-    cursorTop.style.opacity = 1
-    cursorTop.style.display = "block"
-    cursorTop.style.backgroundColor = "black"
+    cursorTop = cursorTop || document.getElementsByClassName("kix-cursor-top")[0]
+    if (cursorTop) {
+        cursorTop.style.opacity = 1
+        cursorTop.style.display = "block"
+        cursorTop.style.backgroundColor = "black"
+    }
 }
 
 function switchModeToInsert() {
     mode = 'insert'
     updateModeIndicator(mode)
-    cursorTop.style.opacity = 0
+    cursorTop = cursorTop || document.getElementsByClassName("kix-cursor-top")[0]
+    if (cursorTop) cursorTop.style.opacity = 0
 }
 
 function switchModeToWait() {
@@ -685,5 +685,17 @@ function activateTopLevelMenu(menuCaption) {
     simulateClick(button);
 }
 
-// Initiate to Normal Mode
-switchModeToNormal()
+function initialize() {
+    const iframe = document.querySelector('.docs-texteventtarget-iframe')
+    if (!iframe || !iframe.contentDocument) return false
+    iframe.contentDocument.addEventListener('keydown', eventHandler, true)
+    switchModeToNormal()
+    return true
+}
+
+if (!initialize()) {
+    const observer = new MutationObserver(() => {
+        if (initialize()) observer.disconnect()
+    })
+    observer.observe(document.documentElement, { childList: true, subtree: true })
+}
