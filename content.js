@@ -1,13 +1,13 @@
 // Google Docs has moved from using editable HTML elements (textbox with contenteditable=true)
 // to custom implementation with its own editing surface since 2015. (https://drive.googleblog.com/2010/05/whats-different-about-new-google-docs.html)
-// This means that each keystroke is captured and then fed into layout engine which 
+// This means that each keystroke is captured and then fed into layout engine which
 // then draws the text, cursor, selection, headings etc on seperate iframe.
-// Such implementation deters any extensibility in terms of text manipulation because 
+// Such implementation deters any extensibility in terms of text manipulation because
 // there is no API to interact with Google Docs layout engine
 
 // Thus only way (in my understanding) to achieve vim motions would be to capture keystrokes
 // before sending to layout engine and interpret them into respective vim motion/command.
-// Then implement those motions by sending relevant keystrokes. Essentially doing a keystroke to keystroke remapping. 
+// Then implement those motions by sending relevant keystrokes. Essentially doing a keystroke to keystroke remapping.
 
 const iframe = document.getElementsByTagName('iframe')[0]   // https://stackoverflow.com/a/4388829
 iframe.contentDocument.addEventListener('keydown', eventHandler, true)
@@ -124,7 +124,7 @@ function switchModeToNormal() {
     mode = 'normal'
     updateModeIndicator(mode)
 
-    //caret indicating visual mode 
+    //caret indicating visual mode
     cursorTop.style.opacity = 1
     cursorTop.style.display = "block"
     cursorTop.style.backgroundColor = "black"
@@ -218,14 +218,12 @@ function goToStartOfPara(shift = false) {
 
 function addLineTop() {
     goToStartOfLine()
-    sendKeyEvent("enter", { shift: true })
+    sendKeyEvent("enter")
     sendKeyEvent("up")
-    switchModeToInsert()
 }
 function addLineBottom() {
     goToEndOfLine()
-    sendKeyEvent("enter", { shift: true })
-    switchModeToInsert()
+    sendKeyEvent("enter")
 }
 
 function runLongStringOp(operation = longStringOp) {
@@ -297,7 +295,7 @@ function waitForFirstInput(key) {
             selectToEndOfLine()
             runLongStringOp()
             break
-				case "G":
+        case "G":
             goToDocEnd(true)
             runLongStringOp()
             break
@@ -331,7 +329,7 @@ function waitForVisualInput(key) {
 }
 
 function handleMultipleMotion(key) {
-    if (/[0-9]/.test(key)) {
+    if (/[1-9]/.test(key)) {
         multipleMotion.times = Number(String(multipleMotion.times)+key)
         return
     }
@@ -377,6 +375,7 @@ function eventHandler(e) {
     }
     if (mode != 'insert') {
         e.preventDefault()
+        e.stopImmediatePropagation()
         switch (mode) {
             case "normal":
                 handleKeyEventNormal(e.key)
@@ -411,15 +410,21 @@ function handleKeyEventNormal(key) {
     
     switch (key) {
         case "h":
+        case "Backspace":
+        case "ArrowLeft":
             sendKeyEvent("left")
             break
         case "j":
+        case "ArrowDown":
+        case "Enter":
             sendKeyEvent("down")
             break
         case "k":
+        case "ArrowUp":
             sendKeyEvent("up")
             break
         case "l":
+        case "ArrowRight":
             sendKeyEvent("right")
             break
         case "}":
@@ -433,10 +438,11 @@ function handleKeyEventNormal(key) {
             break
         case "e":
             goToEndOfWord()
-            sendKeyEvent("right")
             break
         case "w":
             goToEndOfWord()
+            goToEndOfWord()
+            goToStartOfWord()
             break
         case "g":
             goToDocStart()
@@ -451,6 +457,11 @@ function handleKeyEventNormal(key) {
             mode = "waitForFirstInput"
             break
         case "p":
+            addLineBottom()
+            clickMenu(menuItems.paste)
+            break
+        case "P":
+            addLineTop()
             clickMenu(menuItems.paste)
             break
         case "a":
@@ -484,9 +495,11 @@ function handleKeyEventNormal(key) {
             break
         case "o":
             addLineBottom()
+            switchModeToInsert()
             break
         case "O":
             addLineTop()
+            switchModeToInsert()
             break
         case "u":
             clickMenu(menuItems.undo)
@@ -500,7 +513,7 @@ function handleKeyEventNormal(key) {
         case "x":
             sendKeyEvent("delete")
             break
-				case "s":
+                case "s":
             sendKeyEvent("delete")
             switchModeToInsert()
             break
@@ -514,7 +527,7 @@ function handleKeyEventNormal(key) {
     // Check if operation is occuring in temperory normal mode after ctrl-o
     if (tempnormal) {
         tempnormal = false
-        if (mode != 'visual' && mode != 'visualLine'){  // Switch back to insert 
+        if (mode != 'visual' && mode != 'visualLine'){  // Switch back to insert
             switchModeToInsert()                        // after operation
             }
     }
