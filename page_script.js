@@ -51,11 +51,12 @@ const simulateKeyEvent = function(eventType, el, args) {
     el.dispatchEvent(event);
 };
 
-const editorEl = document.querySelector(".docs-texteventtarget-iframe").contentDocument.activeElement;
+setTimeout( () => {
+	const editorEl = document.querySelector(".docs-texteventtarget-iframe").contentDocument.activeElement;
 
-window.addEventListener("doc-keys-simulate-keypress", function(event) {
-    const args = event.detail
-    simulateKeyEvent("keydown", editorEl, args);
-    simulateKeyEvent("keyup", editorEl, args);
-});
-
+	window.addEventListener("doc-keys-simulate-keypress", function(event) {
+			const args = event.detail
+			simulateKeyEvent("keydown", editorEl, args);
+			simulateKeyEvent("keyup", editorEl, args);
+	});
+}, 500)

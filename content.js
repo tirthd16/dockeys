@@ -9,10 +9,7 @@
 // before sending to layout engine and interpret them into respective vim motion/command.
 // Then implement those motions by sending relevant keystrokes. Essentially doing a keystroke to keystroke remapping. 
 
-const iframe = document.getElementsByTagName('iframe')[0]   // https://stackoverflow.com/a/4388829
-iframe.contentDocument.addEventListener('keydown', eventHandler, true)
 
-const cursorTop = document.getElementsByClassName("kix-cursor-top")[0] // element to edit to show normal vs insert mode
 let mode = 'normal'
 let tempnormal = false // State variable for indicating temperory normal mode
 let multipleMotion = {
@@ -218,13 +215,13 @@ function goToStartOfPara(shift = false) {
 
 function addLineTop() {
     goToStartOfLine()
-    sendKeyEvent("enter", { shift: true })
+    sendKeyEvent("enter", { shift: false })
     sendKeyEvent("up")
     switchModeToInsert()
 }
 function addLineBottom() {
     goToEndOfLine()
-    sendKeyEvent("enter", { shift: true })
+    sendKeyEvent("enter", { shift: false })
     switchModeToInsert()
 }
 
@@ -476,6 +473,14 @@ function handleKeyEventNormal(key) {
             goToEndOfLine()
             switchModeToInsert()
             break
+        case "C":
+            selectToEndOfLine()
+            runLongStringOp("c")
+            break
+        case "D":
+            selectToEndOfLine()
+            runLongStringOp("d")
+            break
         case "v":
             switchModeToVisual()
             break
@@ -575,9 +580,11 @@ function handleKeyEventVisualLine(key) {
             goToDocStart(true)
             break
         case "c":
+        case "C":
         case "d":
+        case "D":
         case "y":
-            runLongStringOp(key)
+            runLongStringOp(key.toLowerCase())
             break
         case "i":
         case "a":
@@ -699,5 +706,11 @@ function activateTopLevelMenu(menuCaption) {
     simulateClick(button);
 }
 
-// Initiate to Normal Mode
-switchModeToNormal()
+let cursorTop;
+setTimeout(() => {
+	const iframe = document.querySelector('.docs-texteventtarget-iframe')
+	iframe.contentDocument.addEventListener('keydown', eventHandler, true)
+	cursorTop = document.getElementsByClassName("kix-cursor-top")[0] // element to edit to show normal vs insert mode
+	// Initiate to Normal Mode
+	switchModeToNormal()
+}, 500)
